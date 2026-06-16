@@ -67,7 +67,13 @@ mappings = Hash[YAML.load_file('mappings.yaml').map { |id, value| [id.to_s, valu
 # ---------------------------------------------------------------------------
 
 def parse_datetime(dt_str)
-  Time.strptime(dt_str, '%d-%m-%Y %T.%N')
+  Time.strptime(dt_str + '+0000', '%d-%m-%Y %T.%N%z')
+end
+
+def build_id(row)
+  id = row[:tx_id]
+  id += (row[:deposit].nil? ? '-C-' : '-D-') + row[:currency] + '-' + row[:datetime].utc.to_i.to_s unless id.gsub('-', '').match?(/[0-9A-F]{32,}/i) # UUID should be fine
+  id
 end
 
 # Wise statement export has a bug that it will use same UTC offset for whole export...
@@ -90,6 +96,7 @@ def fix_datetime(rows, timezone)
   rows.each do |row|
     parts = row[:datetime].to_a[0,6].reverse + [offset]
     row[:datetime] = Time.new(*parts)
+    row[:id] = build_id(row)
   end
   rows
 end
@@ -163,15 +170,12 @@ CSV.parse(raw, headers: true, header_converters: :symbol) do |row|
   # fees entries so this fee is actually excluded one so we don't need to add it
   included_fee = 0.0 if description.include?('(fee: ')
 
-  id = tx_id
-  id += (amount.negative? ? '-C-' : '-D-') + currency + '-' + datetime.utc.to_i.to_s unless id.gsub('-', '').match?(/[0-9A-F]{32,}/i) # UUID should be fine
-
   from_currency = row[:exchange_from]
   to_currency = row[:exchange_to]
   exchange_rate = row[:exchange_rate]
 
   rows << {
-    id: id,
+    id: nil, # filled in `fix_datetime`
     datetime: datetime,
     bank_account: remap(bank_account, mappings, currency),
     deposit: deposit,
