@@ -24,6 +24,7 @@ require 'csv'
 require 'date'
 
 require_relative 'src/utils'
+require_relative 'src/wise'
 
 # ---------------------------------------------------------------------------
 # Argument parsing
@@ -59,88 +60,12 @@ unless File.exist?(input)
   exit 1
 end
 
-mappings = load_mappings
-
 # ---------------------------------------------------------------------------
 # Parse Wise CSV
 # ---------------------------------------------------------------------------
 
 raw  = File.read(input, encoding: 'bom|utf-8')
-rows = []
-
-CSV.parse(raw, headers: true, header_converters: :symbol) do |row|
-  # --- IDs ---
-  tx_id = row[:transferwise_id]
-  raise 'Not valid Wise statement CSV' unless tx_id
-
-  # --- Datetime ---
-  datetime = parse_datetime(row[:date_time])
-
-  # --- Amounts ---
-  amount     = row[:amount].to_f           # signed; negative = debit
-
-  deposit    = amount.positive? ? amount     : nil
-  withdrawal = amount.negative? ? amount.abs : nil
-
-  # --- Currency ---
-  currency = row[:currency].upcase
-
-  # --- Description & reference ---
-  description = row[:description]
-  ref_number  = row[:payment_reference]
-
-  # --- Transaction type ---
-  tx_type = row[:transaction_details_type]
-  tx_type = tx_id.split('-').first if tx_type.upcase == 'UNKNOWN'
-
-  # --- Counterparty ---
-  if amount.negative?
-    # Outgoing: payee
-    party_name = row[:payee_name]
-    party_acct = row[:payee_account_number]
-  else
-    # Incoming: payer
-    party_name = row[:payer_name]
-    party_acct = nil
-  end
-
-  party_name = row[:merchant] if blank?(party_name)
-  party_name = 'Wise Europe SA' if tx_id.downcase.include?('fee-')
-  party_name = 'Wise Assets Europe SA' if tx_type.upcase == 'ACCRUAL_CHARGE' && description.start_with?('Wise Assets Europe')
-
-  party_iban, party_acct = iban_acct(party_acct)
-
-  included_fee = row[:total_fees].to_f
-  # When 'fee' is included in description it means we're parsing statement with seperate
-  # fees entries so this fee is actually excluded one so we don't need to add it
-  included_fee = 0.0 if description.include?('(fee: ')
-
-  from_currency = row[:exchange_from]
-  to_currency = row[:exchange_to]
-  exchange_rate = row[:exchange_rate]
-
-  rows << {
-    id: nil, # filled in `fix_datetime`
-    datetime: datetime,
-    bank_account: remap(bank_account, mappings, currency),
-    deposit: deposit,
-    withdrawal: withdrawal,
-    currency: currency,
-    description: description,
-    ref_number: ref_number,
-    tx_id: tx_id,
-    tx_type: tx_type,
-    party_name: remap(party_name, mappings),
-    party_acct: party_acct,
-    party_iban: party_iban,
-    included_fee: included_fee,
-    from_currency: from_currency,
-    to_currency: to_currency,
-    exchange_rate: exchange_rate
-  }
-end
-
-fix_datetime(rows, timezone)
+rows = Wise.parse_csv(raw, bank_account, timezone, load_mappings)
 
 # ---------------------------------------------------------------------------
 # Write ERPNext CSV
