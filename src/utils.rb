@@ -33,3 +33,32 @@ def remap(value, mappings, currency = nil)
   end
   mappings[value] || value
 end
+
+def previous_year(date = Time.now.utc.to_date)
+  year = date.prev_year.year
+  [Date.new(year, 1, 1), Date.new(year, 12, 31)]
+end
+
+def previous_quarter(date = Time.now.utc.to_date)
+  quarter = (date.month - 1) / 3 + 1
+  prev_quarter = quarter - 1
+  year = date.year
+
+  if prev_quarter == 0
+    prev_quarter = 4
+    year -= 1
+  end
+
+  start_month = (prev_quarter - 1) * 3 + 1
+  end_month = prev_quarter * 3
+
+  start_date = Date.new(year, start_month, 1)
+  end_date = Date.new(year, end_month, -1)
+
+  [start_date, end_date]
+end
+
+def previous_month(date = Time.now.utc.to_date)
+  prev_month = date.prev_month
+  [Date.new(prev_month.year, prev_month.month, 1), Date.new(prev_month.year, prev_month.month, -1)]
+end

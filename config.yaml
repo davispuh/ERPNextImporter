@@ -1,0 +1,15 @@
+# Secrets go in environment variables, NOT here:
+#   ERPNEXT_URL         can also be set here
+#   ERPNEXT_API_KEY
+#   ERPNEXT_API_SECRET
+
+wise:
+  domain: wise.com
+  #domain: wise-sandbox.com
+  profile_id: ""            # leave empty to auto-detect first profile
+  statement_type: FLAT      # FLAT or COMPACT
+  locale: en
+  days_back: 180            # fallback look-back when nothing imported yet
+
+erpnext:
+  url: https://example.org

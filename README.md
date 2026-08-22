@@ -1,10 +1,11 @@
 # Tools for data import into ERPNext
 
-Currently 3 scripts are implemented:
+Currently 4 scripts are implemented:
 
 * `CAMT.053_to_ERPNext.rb` (for ISO 20022 `CAMT.053` XML, used by most European banks like Wise etc.)
 * `PayPal_to_ERPNext.rb` (for PayPal Balance CSV or Activity TSV)
 * `Wise_to_ERPNext.rb` (for Wise Statements CSV)
+* `Auto_Wise_to_ERPNext.rb` (automatic Wise statement import)
 
 Scripts will convert provided statements to CSV format expected by **ERPNext's Bank Statement Import**.
 
@@ -14,6 +15,7 @@ Scripts will convert provided statements to CSV format expected by **ERPNext's B
 - [CAMT.053_to_ERPNext.rb](#CAMT.053_to_ERPNext.rb)
 - [PayPal\_to\_ERPNext.rb](#PayPal_to_ERPNext.rb)
 - [Wise\_to\_ERPNext.rb](#Wise_to_ERPNext.rb)
+- [Auto_Wise\_to\_ERPNext.rb](#Auto_Wise_to_ERPNext.rb)
 - [mappings.yaml](#mappings.yaml)
 - [ERPNext Import](#ERPNext-Import)
 
@@ -144,9 +146,47 @@ ruby Wise_to_ERPNext.rb 2026.xml 2026.csv
 ```
 
 
+## Auto_Wise_to_ERPNext.rb
+
+Automatically imports Wise balance statements into ERPNext.
+
+### Setup
+
+1. Create an API key in ERPNext (Edit Profile => Settings => API Access).
+2. Fill in non-secret settings in `config.yaml` and set
+   secrets via environment variables:
+3. Login Wise with your account
+
+```bash
+export ERPNEXT_API_KEY=...
+export ERPNEXT_API_SECRET=...
+```
+
+### Usage
+
+```bash
+ruby Auto_Wise_to_ERPNext.rb [options]
+```
+
+### Options
+
+| Option | Default | Description |
+|---|---|---|
+| `--config PATH` | `config.yaml` | Path to configuration file |
+| `--from YYYY-MM-DD` | auto | Start date |
+| `--to YYYY-MM-DD` | today | End date |
+| `--type FLAT\|COMPACT` | FLAT | Statement type |
+| `--days-back N` | 180 | Look back this many days when nothing imported yet |
+| `--year` | off | Save last year statements of all balances to files instead of importing |
+| `--quarter` | off | Save last quarter statements of all balances to files instead of importing |
+| `--month` | off | Save last month statements of all balances to files instead of importing |
+| `--import` | off | Create Bank Transactions in ERPNext |
+| `--submit` | off | Also submit the created/imported Bank Transactions |
+| `--help` | off | Show help |
+
 ## mappings.yaml
 
-Both scripts look for a `mappings.yaml` file in the **current working directory**.
+Scripts look for a `mappings.yaml` file in the **current working directory**.
 
 If found, any matching party name or account value is replaced before writing to the CSV - useful for normalising counterparty names to the exact strings used in ERPNext.
 
